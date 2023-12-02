@@ -4,15 +4,15 @@ import gleam/int
 import gleam/dict
 import gleam/option.{Some}
 
-type Id = Int
+type Round {
+  Round(red: Int, green: Int, blue: Int)
+} 
 
-type Group = #(String, Int)
+type Game {
+  Game(id: Int, rounds: List(Round))
+}
 
-type Round = List(Group)
-
-type Game = #(Id, List(Round))
-
-fn parse_game(input: String) -> List(Game) {
+fn parse_games(input: String) -> List(Game) {
   input
   |> string.split("\n")
   |> list.map(fn(line){
@@ -25,54 +25,45 @@ fn parse_game(input: String) -> List(Game) {
     |> list.map(fn(round){
       round
       |> string.split(", ")
-      |> list.map(fn(group){
+      |> list.fold(Round(0,0,0), fn(round, group){
         let assert [count, color] = string.split(group, " ")
         let assert Ok(count) = int.parse(count)
-        #(color, count)
+        case color {
+          "red" -> Round(..round, red: count)
+          "green" -> Round(..round, green: count)
+          "blue" -> Round(..round, blue: count)
+        }
       })
     })
-    #(id, rounds)
+    Game(id, rounds)
   }) 
 }
 
 pub fn pt_1(input: String) {
-  let games = parse_game(input)
+  let games = parse_games(input)
   
-  games
-  |> list.filter(fn(game){
-    list.all(game.1, fn(round){
-      list.all(round, fn(group){
-        case group {
-          #("red", count) if count <= 12 -> True
-          #("green", count) if count <= 13 -> True
-          #("blue", count) if count <= 14 -> True
-          _ -> False
-        }
-      })
-    })
-  })
-  |> list.fold(0, fn(acc, game) {acc + game.0})
+  {
+    use game <- list.filter(games)
+    use round <- list.all(game.rounds)
+    round.red <= 12 && round.green <= 13 && round.blue <= 14
+  }
+  |> list.fold(0, fn(acc, game) {acc + game.id})
 }
 
 pub fn pt_2(input: String) {
-  let games = parse_game(input)
+  let games = parse_games(input)
   
-  games
-  |> list.map(fn(game){
-    let min_set = list.fold(game.1, dict.from_list([#("red", 0),#("green", 0),#("blue", 0)]), fn(mins, round) {
-      list.fold(round, mins, fn(mins, group: Group){
-          dict.update(mins, group.0, fn(value) {
-            let assert Some(curr) = value
-            int.max(curr, group.1)
-          })
-      })
+  {
+    use game <- list.map(games)
+    let Round(red, green, blue) = list.fold(game.rounds, Round(0,0,0), fn(mins, round) {
+      Round(
+        red: int.max(mins.red, round.red),
+        green: int.max(mins.green, round.green),
+        blue: int.max(mins.blue, round.blue)
+      )
     })
     
-    let assert Ok(red) = dict.get(min_set, "red")
-    let assert Ok(green) = dict.get(min_set, "green")
-    let assert Ok(blue) = dict.get(min_set, "blue")
-
     red * green * blue
-  })
+  }
   |> int.sum
 }
