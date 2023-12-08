@@ -1,11 +1,9 @@
-import gleam/option.{Some}
 import gleam/result
 import gleam/function
 import gleam/list
-import gleam/dict.{type Dict}
 import gleam/regex
 import gleam/string
-import gleam/int
+import gleam/dict.{type Dict}
 
 type Instructions =
   #(List(String), Dict(String, #(String, String)))
@@ -76,59 +74,27 @@ fn move_right(map: Dict(String, #(String, String)), current: String) {
 }
 
 fn ghost_steps_to_z(instructions: Instructions) -> Int {
-  let starting_nodes =
-    instructions.1
-    |> dict.keys
-    |> list.filter(fn(node) {
-      case string.to_graphemes(node) {
-        [_, _, "A"] -> True
-        _ -> False
-      }
-    })
-
-  starting_nodes
+  instructions.1
+  |> dict.keys
+  |> list.filter(fn(node) {
+    case string.to_graphemes(node) {
+      [_, _, "A"] -> True
+      _ -> False
+    }
+  })
   |> list.map(fn(node) { count_to_z(instructions, 0, 0, node) })
   |> lcm
 }
 
-fn lcm(nums) -> Int {
-  nums
-  |> list.map(fn(n) { #(n, n) })
-  |> dict.from_list
-  |> do_lcm
+fn lcm(nums: List(Int)) -> Int {
+  let assert Ok(n) = list.reduce(nums, fn(a, b) { a * b / gcd(a, b) })
+  n
 }
 
-fn do_lcm(nums: Dict(Int, Int)) -> Int {
-  let values = dict.values(nums)
-  let assert Ok(max) = list.reduce(values, fn(a, b) { int.max(a, b) })
-  case
-    values
-    |> list.all(fn(value) { max % value == 0 })
-  {
-    True -> max
-    False -> {
-      nums
-      |> fn(nums) {
-        let assert Ok(max_key) =
-          list.find(
-            dict.keys(nums),
-            fn(key) {
-              let assert Ok(value) = dict.get(nums, key)
-              value == max
-            },
-          )
-
-        dict.update(
-          nums,
-          max_key,
-          fn(value) {
-            let assert Some(value) = value
-            value + max_key
-          },
-        )
-      }
-      |> do_lcm
-    }
+fn gcd(a: Int, b: Int) -> Int {
+  case a {
+    0 -> b
+    _ -> gcd(b % a, a)
   }
 }
 
